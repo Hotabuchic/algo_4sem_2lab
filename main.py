@@ -272,8 +272,6 @@ class TravelingSalesmanApp(QMainWindow):
 
         currentPath = self.find_hamiltonian_cycle()
         currentDistance = self.totalDistance(currentPath)
-        firstDistance = currentDistance
-        print(currentPath, currentDistance)
 
         bestPath = currentPath[:]
         bestDistance = currentDistance
@@ -282,37 +280,32 @@ class TravelingSalesmanApp(QMainWindow):
         start_temp = temperature
         coolingRate = 0.999
         minTemperature = 0.001
-        iterationsPerTemp = 1
         iteration = 0
+        iter_limit = 10000
 
-        while temperature > minTemperature:
+        while temperature > minTemperature and iteration < iter_limit:
             if self.useModificationCheckBox.isChecked():
                 temperature = start_temp / (1 + iteration)
             else:
                 temperature = start_temp * (coolingRate ** iteration)
 
-            for _ in range(iterationsPerTemp):
-                newPath = self.get_neighbor_path(currentPath)
-                newDistance = self.totalDistance(newPath)
-                print(newDistance)
-                delta = newDistance - currentDistance
+            newPath = self.get_neighbor_path(currentPath)
+            newDistance = self.totalDistance(newPath)
+            delta = newDistance - currentDistance
 
-                if delta <= 0:
-                    currentPath = newPath
-                    currentDistance = newDistance
+            if delta <= 0:
+                currentPath = newPath
+                currentDistance = newDistance
 
-                    bestPath = newPath
-                    bestDistance = newDistance
-                    # print(f"{iteration} New best distance: {bestDistance}")
+                bestPath = newPath
+                bestDistance = newDistance
 
-                elif random.random() < math.exp(-(delta) / temperature):
-                    currentPath = newPath
-                    currentDistance = newDistance
-                    # print(f"{iteration} New distance: {newDistance}")
+            elif random.random() < math.exp(-(delta) / temperature):
+                currentPath = newPath
+                currentDistance = newDistance
 
             iteration += 1
 
-        print(f"Iteration and first distance: {iteration} {firstDistance}")
         if bestPath:
             bestPath.append(bestPath[0])
             t_2 = time.perf_counter()
@@ -320,7 +313,6 @@ class TravelingSalesmanApp(QMainWindow):
             self.resultDisplay.setText(f"Время выполнения: {dt:.4f} сек")
             self.resultDisplay.append(f"Optimal Path: {' -> '.join(map(str, bestPath))}")
             self.resultDisplay.append(f"Path Length: {bestDistance:.4f}")
-            print(bestPath)
             self.drawOptimalPath(bestPath)
         else:
             self.resultDisplay.setText("No path found.")
