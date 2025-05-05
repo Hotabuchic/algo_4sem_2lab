@@ -5,7 +5,7 @@ import numpy as np
 import time
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QWidget,
                              QTextEdit, QTableWidget, QTableWidgetItem, QGraphicsScene, QGraphicsView, QCheckBox,
-                             QLineEdit)
+                             QLineEdit, QFormLayout)
 from PyQt5.QtGui import QPen, QBrush, QPainter, QPolygonF
 from PyQt5.QtCore import Qt, QPointF
 
@@ -84,8 +84,21 @@ class TravelingSalesmanApp(QMainWindow):
         rightLayout.addWidget(self.undoLastActionButton)
         rightLayout.addWidget(self.clearGraphButton)
 
+        paramsForm = QFormLayout()
+
+        self.temperature = QLineEdit("1000")
+        self.coolingRate = QLineEdit("0.999")
+        self.minTemperature = QLineEdit("0.001")
+        self.iter_limit = QLineEdit("10000")
+
+        paramsForm.addRow("Начальная температура:", self.temperature)
+        paramsForm.addRow("Коэффициент охлаждения:", self.coolingRate)
+        paramsForm.addRow("Минимальная температура:", self.minTemperature)
+        paramsForm.addRow("Максимальное кол-во итераций:", self.iter_limit)
+
         mainLayout.addLayout(leftLayout, 1)
         mainLayout.addLayout(rightLayout, 2)
+        mainLayout.addLayout(paramsForm, 3)
 
         self.centralWidget.setLayout(mainLayout)
 
@@ -249,7 +262,6 @@ class TravelingSalesmanApp(QMainWindow):
         path.append(path[0])
         return sum(self.getEdgeWeight(path[i], path[i + 1]) for i in range(len(path) - 1))
 
-
     def get_neighbor_path(self, path):
         if len(path) < 2:
             return path.copy()
@@ -262,9 +274,9 @@ class TravelingSalesmanApp(QMainWindow):
         return neighbor
 
     def calculateOptimalRoute(self):
-        self.edges = [[0, 1, 3.0], [1, 0, 3.0], [5, 0, 3.0], [5, 1, 3.0], [1, 5, 3.0], [5, 4, 4.0], [5, 3, 5.0], [5, 2, 3.0], [1, 2, 8.0], [2, 1, 3.0], [2, 3, 1.0], [3, 2, 8.0], [3, 4, 1.0], [4, 3, 3.0], [4, 0, 3.0], [0, 4, 1.0]]
-        self.nodes = [0, 1, 2, 3, 4, 5]
-        self.nodePositions = {0: (29.0, -52.0), 1: (-45.0, 26.0), 2: (23.0, 74.0), 3: (84.0, 49.0), 4: (95.0, -8.0), 5: (29.0, 20.0)}
+        # self.edges = [[0, 1, 3.0], [1, 0, 3.0], [5, 0, 3.0], [5, 1, 3.0], [1, 5, 3.0], [5, 4, 4.0], [5, 3, 5.0], [5, 2, 3.0], [1, 2, 8.0], [2, 1, 3.0], [2, 3, 1.0], [3, 2, 8.0], [3, 4, 1.0], [4, 3, 3.0], [4, 0, 3.0], [0, 4, 1.0]]
+        # self.nodes = [0, 1, 2, 3, 4, 5]
+        # self.nodePositions = {0: (29.0, -52.0), 1: (-45.0, 26.0), 2: (23.0, 74.0), 3: (84.0, 49.0), 4: (95.0, -8.0), 5: (29.0, 20.0)}
         if not self.edges:
             return
 
@@ -272,47 +284,40 @@ class TravelingSalesmanApp(QMainWindow):
 
         currentPath = self.find_hamiltonian_cycle()
         currentDistance = self.totalDistance(currentPath)
-        firstDistance = currentDistance
-        print(currentPath, currentDistance)
 
         bestPath = currentPath[:]
         bestDistance = currentDistance
 
-        temperature = 1000
+        temperature = int(self.temperature.text())
         start_temp = temperature
-        coolingRate = 0.999
-        minTemperature = 0.001
-        iterationsPerTemp = 1
+        coolingRate = float(self.coolingRate.text())
+        minTemperature = float(self.minTemperature.text())
         iteration = 0
+        iter_limit = int(self.iter_limit.text())
 
-        while temperature > minTemperature:
+        while temperature > minTemperature and iteration < iter_limit:
             if self.useModificationCheckBox.isChecked():
                 temperature = start_temp / (1 + iteration)
             else:
                 temperature = start_temp * (coolingRate ** iteration)
 
-            for _ in range(iterationsPerTemp):
-                newPath = self.get_neighbor_path(currentPath)
-                newDistance = self.totalDistance(newPath)
-                print(newDistance)
-                delta = newDistance - currentDistance
+            newPath = self.get_neighbor_path(currentPath)
+            newDistance = self.totalDistance(newPath)
+            delta = newDistance - currentDistance
 
-                if delta <= 0:
-                    currentPath = newPath
-                    currentDistance = newDistance
+            if delta <= 0:
+                currentPath = newPath
+                currentDistance = newDistance
 
-                    bestPath = newPath
-                    bestDistance = newDistance
-                    # print(f"{iteration} New best distance: {bestDistance}")
+                bestPath = newPath
+                bestDistance = newDistance
 
-                elif random.random() < math.exp(-(delta) / temperature):
-                    currentPath = newPath
-                    currentDistance = newDistance
-                    # print(f"{iteration} New distance: {newDistance}")
+            elif random.random() < math.exp(-(delta) / temperature):
+                currentPath = newPath
+                currentDistance = newDistance
 
             iteration += 1
 
-        print(f"Iteration and first distance: {iteration} {firstDistance}")
         if bestPath:
             bestPath.append(bestPath[0])
             t_2 = time.perf_counter()
@@ -320,7 +325,6 @@ class TravelingSalesmanApp(QMainWindow):
             self.resultDisplay.setText(f"Время выполнения: {dt:.4f} сек")
             self.resultDisplay.append(f"Optimal Path: {' -> '.join(map(str, bestPath))}")
             self.resultDisplay.append(f"Path Length: {bestDistance:.4f}")
-            print(bestPath)
             self.drawOptimalPath(bestPath)
         else:
             self.resultDisplay.setText("No path found.")
